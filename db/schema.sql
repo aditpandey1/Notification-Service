@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS notifications (
   scheduled_at TIMESTAMP NULL,
   created_at TIMESTAMP DEFAULT now(),
   updated_at TIMESTAMP DEFAULT now()
+  last_error TEXT,
+  next_attempt_at TIMESTAMP NULL,
 );
 
 CREATE TABLE IF NOT EXISTS notification_events (
