@@ -1,32 +1,12 @@
-require('dotenv').config();
-const express = require('express');
-const bodyParser = require('body-parser');
-const { enqueueNotification } = require('../services/enqueueService');
-
+require("dotenv").config();
+const express = require("express");
+const bodyParser = require("body-parser");
 const app = express();
+const routes = require("../routes/notificationRoutes");
 app.use(bodyParser.json());
 
-app.post('/api/v1/notifications', async (req, res) => {
-  try {
-    const { type, recipient, payload, scheduledAt, maxAttempts } = req.body;
-    // basic validation
-    if (!type || !recipient || !payload) {
-      return res.status(400).json({ error: 'type, recipient and payload are required' });
-    }
-    const notif = await enqueueNotification({
-      type,
-      recipient,
-      payload,
-      scheduledAt,
-      maxAttempts
-    });
-    res.status(201).json({ id: notif.id, status: notif.status });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'internal error' });
-  }
-});
+app.use("/api/v1", routes);
 
-app.get('/health', (req, res) => res.json({ ok: true }));
+app.get("/health", (req, res) => res.json({ ok: true }));
 
 module.exports = app;

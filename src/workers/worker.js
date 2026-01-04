@@ -38,7 +38,7 @@ const worker = new Worker(
         new Date(notif.next_attempt_at) > new Date()
       ) {
         const remaining = new Date(notif.next_attempt_at) - Date.now();
-        await job.queue.add("send", { notificationId }, { delay: remaining });
+        await queue.add("send", { notificationId }, { delay: remaining });
         await client.query("UPDATE notifications SET status=$1 WHERE id=$2", [
           "failed",
           notificationId,
@@ -81,7 +81,7 @@ const worker = new Worker(
             ["failed", newAttempts, errorMsg, nextAttemptAt, notificationId]
           );
           // requeue with delay
-          await job.queue.add("send", { notificationId }, { delay });
+          await queue.add("send", { notificationId }, { delay });
           await client.query(
             "INSERT INTO notification_events (notification_id, event_type, error_message) VALUES ($1,$2,$3)",
             [notificationId, "retry", errorMsg]
