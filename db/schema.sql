@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   updated_at TIMESTAMP DEFAULT now()
   last_error TEXT,
   next_attempt_at TIMESTAMP NULL,
+  provider_message_id TEXT NULL,
 );
 
 CREATE TABLE IF NOT EXISTS notification_events (

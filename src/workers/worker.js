@@ -2,6 +2,7 @@ require("dotenv").config();
 const { Worker, Queue } = require("bullmq");
 const { pool } = require("../db/pg");
 const { calcBackoffDelayMs } = require("../utils/retry");
+const { sendEmail } = require("../providerService/email.service");
 
 const connection = {
   host: process.env.REDIS_HOST || "127.0.0.1",
@@ -46,12 +47,22 @@ const worker = new Worker(
         return;
       }
 
-      // 3️⃣ safe to send now
-
-      // MOCK send: simulate success/failure
-
-      const success = Math.random() > 0.2; // 80% success
-
+      let success = false;
+      let providerMessageId = null;
+      try {
+        providerMessageId = sendEmail(
+          notif.recipient.email,
+          notif.payload.subject,
+          notif.payload.body
+        );
+        success = true;
+        await client.query(
+          "UPDATE notifications SET provider_message_id=$1 WHERE id=$2",
+          [providerMessageId, notificationId]
+        );
+      } catch (error) {
+        success = false;
+      }
       if (success) {
         await client.query(
           "UPDATE notifications SET status=$1, updated_at=now() WHERE id=$2",
