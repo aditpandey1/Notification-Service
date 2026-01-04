@@ -62,7 +62,7 @@ const worker = new Worker(
           [notificationId, "delivered"]
         );
       } else {
-        const newAttempts = notif.attempts + 1;
+        const newAttempts = notif.attempts;
         const errorMsg = "provider failed: ..."; // real provider error
         if (newAttempts >= notif.max_attempts) {
           await client.query(
