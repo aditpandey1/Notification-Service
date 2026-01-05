@@ -1,0 +1,23 @@
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+.env
+.env.local
+.DS_Store
+
+
+# Docker
+**/docker-compose.override.yml
+**/docker-compose.*.local.yml
+
+# Logs
+logs
+*.log
+
+# Editor
+.vscode/
+.idea/
+*.sublime-workspace
+
+

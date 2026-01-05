@@ -3,6 +3,7 @@ const { Worker, Queue } = require("bullmq");
 const { pool } = require("../db/pg");
 const { calcBackoffDelayMs } = require("../utils/retry");
 const { sendEmail } = require("../providerService/email.service");
+const { isTimeoutOrNetworkError } = require("../utils/isTimeoutError");
 
 const connection = {
   host: process.env.REDIS_HOST || "127.0.0.1",
@@ -47,21 +48,48 @@ const worker = new Worker(
         return;
       }
 
+      if (notif?.provider_message_id) {
+        await client.query(
+          "UPDATE notifications SET status=$1, updated_at=now() WHERE id=$2",
+          ["delivered", notificationId]
+        );
+        await client.query(
+          "INSERT INTO notification_events (notification_id, event_type) VALUES ($1,$2)",
+          [notificationId, "delivered"]
+        );
+        return;
+      }
+
       let success = false;
       let providerMessageId = null;
+      let errorMessage = null;
+      let badRequest = false;
       try {
-        providerMessageId = sendEmail(
+        providerMessageId = await sendEmail(
           notif.recipient.email,
           notif.payload.subject,
-          notif.payload.body
+          notif.payload.body,
+          notificationId
         );
-        success = true;
         await client.query(
           "UPDATE notifications SET provider_message_id=$1 WHERE id=$2",
           [providerMessageId, notificationId]
         );
+        success = true;
       } catch (error) {
         success = false;
+        errorMessage =
+          error?.response?.body?.errors?.[0]?.message ||
+          error?.message ||
+          "provider failed: ...";
+        if (
+          !isTimeoutOrNetworkError(error) &&
+          error?.response?.statusCode !== 429 &&
+          (error?.response?.statusCode < 500 ||
+            error?.response?.statusCode >= 600)
+        ) {
+          badRequest = true;
+        }
       }
       if (success) {
         await client.query(
@@ -74,28 +102,27 @@ const worker = new Worker(
         );
       } else {
         const newAttempts = notif.attempts;
-        const errorMsg = "provider failed: ..."; // real provider error
-        if (newAttempts >= notif.max_attempts) {
+        if (newAttempts >= notif.max_attempts || badRequest) {
           await client.query(
             "UPDATE notifications SET status=$1, attempts=$2, last_error=$3, updated_at=now() WHERE id=$4",
-            ["dead", newAttempts, errorMsg, notificationId]
+            ["dead", newAttempts, errorMessage, notificationId]
           );
           await client.query(
             "INSERT INTO notification_events (notification_id, event_type, error_message) VALUES ($1,$2,$3)",
-            [notificationId, "dlq", errorMsg]
+            [notificationId, "dlq", errorMessage]
           );
         } else {
           const delay = calcBackoffDelayMs(newAttempts);
           const nextAttemptAt = new Date(Date.now() + delay);
           await client.query(
             "UPDATE notifications SET status=$1, attempts=$2, last_error=$3, next_attempt_at=$4, updated_at=now() WHERE id=$5",
-            ["failed", newAttempts, errorMsg, nextAttemptAt, notificationId]
+            ["failed", newAttempts, errorMessage, nextAttemptAt, notificationId]
           );
           // requeue with delay
           await queue.add("send", { notificationId }, { delay });
           await client.query(
             "INSERT INTO notification_events (notification_id, event_type, error_message) VALUES ($1,$2,$3)",
-            [notificationId, "retry", errorMsg]
+            [notificationId, "retry", errorMessage]
           );
         }
       }
