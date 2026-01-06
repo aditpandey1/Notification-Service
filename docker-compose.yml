@@ -23,6 +23,16 @@ services:
     env_file: .env
     depends_on: ["redis","postgres"]
     command: node src/workers/worker.js
+  watchdog:
+    build:
+      context: .
+      dockerfile: Dockerfile.watchdog
+    env_file: .env
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/notifications_db
+    depends_on: ["postgres", "redis"]
 
 volumes:
   pgdata:

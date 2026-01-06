@@ -1,0 +1,4 @@
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+*/10 * * * * root cd /app && node src/jobs/notification.watchdog.js >> /app/watchdog.log 2>&1
+

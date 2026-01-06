@@ -6,7 +6,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon --watch src --exec node src/server.js",
     "start": "node src/server.js",
-    "worker": "node src/workers/worker.js"
+    "worker": "node src/workers/worker.js",
+    "watchdog": "node src/jobs/notification.watchdog.js"
   },
   "keywords": [],
   "author": "",

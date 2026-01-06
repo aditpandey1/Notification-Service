@@ -1,0 +1,16 @@
+FROM node:18
+
+# Install cron
+RUN apt-get update && apt-get install -y cron && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY . .
+
+# Copy cron file and set permissions
+COPY src/cron/watchdog.cron /etc/cron.d/watchdog
+RUN chmod 0644 /etc/cron.d/watchdog
+
+# Create log directory
+RUN mkdir -p /app && touch /app/watchdog.log
+
+CMD ["sh", "-c", "cron && tail -f /app/watchdog.log"]
